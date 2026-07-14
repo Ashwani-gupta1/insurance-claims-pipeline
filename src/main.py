@@ -1,7 +1,10 @@
 from src.ingestion.reader import DataReader
+
 from src.validation.validator import Validator
 from src.validation.duplicate_checker import DuplicateChecker
 from src.validation.report import ValidationReport
+
+from src.transform.claim_transformer import ClaimTransformer
 
 from src.utils.writer import DataWriter
 from src.utils.report_writer import ReportWriter
@@ -33,11 +36,12 @@ def main():
 
 
         # -------------------------
-        # Step 2: Validation Rules
+        # Step 2: Validation
         # -------------------------
         validator = Validator()
 
         valid_df, rejected_df = validator.validate(df)
+
 
 
         # -------------------------
@@ -68,13 +72,23 @@ def main():
 
 
         # -------------------------
-        # Step 4: Write Data Output
+        # Step 4: Transformation
+        # -------------------------
+        transformer = ClaimTransformer()
+
+        transformed_df = transformer.transform(
+            clean_df
+        )
+
+
+        # -------------------------
+        # Step 5: Write Output Files
         # -------------------------
         writer = DataWriter()
 
 
         writer.write_csv(
-            clean_df,
+            transformed_df,
             "data/processed/valid_claims.csv"
         )
 
@@ -86,19 +100,19 @@ def main():
 
 
         # -------------------------
-        # Step 5: Generate Report
+        # Step 6: Generate Report
         # -------------------------
         report_generator = ValidationReport()
 
         report = report_generator.generate(
             len(df),
-            clean_df,
+            transformed_df,
             rejected_df
         )
 
 
         # -------------------------
-        # Step 6: Write JSON Report
+        # Step 7: Save Report JSON
         # -------------------------
         report_writer = ReportWriter()
 
@@ -111,9 +125,9 @@ def main():
         # -------------------------
         # Console Output
         # -------------------------
-        print("\nVALID CLAIMS")
+        print("\nPROCESSED CLAIMS")
         print("----------------")
-        print(clean_df)
+        print(transformed_df)
 
 
         print("\nREJECTED CLAIMS")
@@ -124,6 +138,7 @@ def main():
         print("\nVALIDATION REPORT")
         print("----------------")
         print(report)
+
 
 
     except Exception as e:
