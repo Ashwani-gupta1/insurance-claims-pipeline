@@ -6,9 +6,13 @@ from src.validation.report import ValidationReport
 
 from src.transform.claim_transformer import ClaimTransformer
 
+from src.warehouse.loader import WarehouseLoader
+
 from src.utils.writer import DataWriter
 from src.utils.report_writer import ReportWriter
 from src.utils.logger import get_logger
+
+import pandas as pd
 
 
 logger = get_logger(__name__)
@@ -22,7 +26,6 @@ def main():
 
         logger.info("Starting claims pipeline")
 
-
         # -------------------------
         # Step 1: Ingestion
         # -------------------------
@@ -34,15 +37,12 @@ def main():
             f"Records received: {len(df)}"
         )
 
-
         # -------------------------
         # Step 2: Validation
         # -------------------------
         validator = Validator()
 
         valid_df, rejected_df = validator.validate(df)
-
-
 
         # -------------------------
         # Step 3: Duplicate Detection
@@ -53,14 +53,11 @@ def main():
             valid_df
         )
 
-
         if not duplicate_df.empty:
 
             duplicate_df["validation_errors"] = (
                 "Duplicate claim_id"
             )
-
-            import pandas as pd
 
             rejected_df = pd.concat(
                 [
@@ -69,7 +66,6 @@ def main():
                 ],
                 ignore_index=True
             )
-
 
         # -------------------------
         # Step 4: Transformation
@@ -80,27 +76,36 @@ def main():
             clean_df
         )
 
-
         # -------------------------
         # Step 5: Write Output Files
         # -------------------------
         writer = DataWriter()
-
 
         writer.write_csv(
             transformed_df,
             "data/processed/valid_claims.csv"
         )
 
-
         writer.write_csv(
             rejected_df,
             "data/rejected/rejected_claims.csv"
         )
 
+        # -------------------------
+        # Step 6: Load to Warehouse
+        # -------------------------
+        warehouse_loader = WarehouseLoader()
+
+        warehouse_loader.load_claims(
+            transformed_df
+        )
+
+        logger.info(
+            "Warehouse load completed successfully"
+        )
 
         # -------------------------
-        # Step 6: Generate Report
+        # Step 7: Generate Report
         # -------------------------
         report_generator = ValidationReport()
 
@@ -110,9 +115,8 @@ def main():
             rejected_df
         )
 
-
         # -------------------------
-        # Step 7: Save Report JSON
+        # Step 8: Save Report JSON
         # -------------------------
         report_writer = ReportWriter()
 
@@ -121,7 +125,6 @@ def main():
             "data/reports/validation_report.json"
         )
 
-
         # -------------------------
         # Console Output
         # -------------------------
@@ -129,26 +132,25 @@ def main():
         print("----------------")
         print(transformed_df)
 
-
         print("\nREJECTED CLAIMS")
         print("----------------")
         print(rejected_df)
-
 
         print("\nVALIDATION REPORT")
         print("----------------")
         print(report)
 
-
+        logger.info(
+            "Claims pipeline completed successfully"
+        )
 
     except Exception as e:
 
-        logger.error(
+        logger.exception(
             f"Pipeline failed: {str(e)}"
         )
 
         raise
-
 
 
 if __name__ == "__main__":
